@@ -5,67 +5,74 @@ import batalla_pb2_grpc
 import time
 
 # --- CONFIGURACIÓN DE CONEXIÓN ---
-# No incluyas 'https://' ni el puerto ':443'. Render lo gestiona con SSL.
+# Render requiere SSL (secure_channel) para conexiones externas
 URL_SERVIDOR = 'batallanaval-grcp-online.onrender.com'
 
 def iniciar_conexion():
     if 'stub' not in st.session_state:
-        # Render GRATIS requiere conexión SEGURA (SSL) para gRPC externo
-        credenciales = grpc.ssl_channel_credentials()
-        canal = grpc.secure_channel(URL_SERVIDOR, credenciales)
-        st.session_state.stub = batalla_pb2_grpc.MotorMultijugadorStub(canal)
-        st.session_state.id_jugador = None
+        try:
+            # Conexión SEGURA obligatoria para Render Free
+            credenciales = grpc.ssl_channel_credentials()
+            canal = grpc.secure_channel(URL_SERVIDOR, credenciales)
+            st.session_state.stub = batalla_pb2_grpc.MotorMultijugadorStub(canal)
+            st.session_state.id_jugador = None
+        except Exception as e:
+            st.error(f"Fallo al crear el canal de comunicación: {e}")
 
-# --- INTERFAZ DE STREAMLIT ---
-st.set_page_config(page_title="Batalla Naval Royale - UACAM", layout="wide")
+# --- INTERFAZ ---
+st.set_page_config(page_title="Batalla Naval - UACAM", layout="wide")
 st.title("🚢 Batalla Naval Royale Online")
-st.subheader("Proyecto Facultad de Ingeniería - Sistemas")
+st.write("Facultad de Ingeniería - Ingeniería en Sistemas Computacionales")
 
 iniciar_conexion()
 
-# 1. REGISTRO DE JUGADOR
+# 1. FLUJO DE REGISTRO
 if st.session_state.id_jugador is None:
-    st.info("Bienvenido. Para iniciar la partida, regístrate.")
-    total_j = st.number_input("¿Cuántos jugadores esperan?", min_value=2, max_value=4, value=2)
+    st.info("Regístrate para entrar a la partida.")
+    total_j = st.number_input("¿Cuántos jugadores serán en total?", min_value=2, max_value=4, value=2)
     
     if st.button("Registrarme y Unirme"):
         try:
-            respuesta = st.session_state.stub.RegistrarJugador(
-# Cambia la línea 34 por esta:
-try:
-    # Asegúrate de que el nombre del mensaje sea el correcto según tu .proto
-    solicitud = batalla_pb2.SolicitudRegistro(total_esperados=total_j)
-    respuesta = st.session_state.stub.RegistrarJugador(solicitud)
-    
-    st.session_state.id_jugador = respuesta.id_jugador
-    st.success(f"¡Registrado! ID: {st.session_state.id_jugador}")
-    st.rerun()
-except AttributeError:
-    st.error("Error: El mensaje 'SolicitudRegistro' no existe en batalla_pb2. Revisa los nombres en tu archivo .proto")            )
+            # IMPORTANTE: El nombre del mensaje debe ser EXACTO al de tu .proto
+            # Si en tu .proto se llama de otra forma, cámbialo aquí:
+            solicitud = batalla_pb2.SolicitudRegistro(total_esperados=total_j)
+            respuesta = st.session_state.stub.RegistrarJugador(solicitud)
+            
             st.session_state.id_jugador = respuesta.id_jugador
-            st.success(f"¡Registrado con éxito! Eres el Jugador ID: {st.session_state.id_jugador}")
+            st.success(f"¡Conectado! Eres el Jugador ID: {st.session_state.id_jugador}")
+            time.sleep(1)
             st.rerun()
+            
         except grpc.RpcError as e:
-            st.error(f"Error de conexión con el servidor: {e.details()}")
-            st.warning("Asegúrate de que el servidor en Render esté en estado 'Live'.")
+            st.error(f"Error de red: {e.code()} - {e.details()}")
+            st.warning("Verifica que el servidor en Render esté 'Live'.")
+        except AttributeError:
+            st.error("Error: 'SolicitudRegistro' no coincide con tu archivo batalla_pb2.py")
+        except Exception as e:
+            st.error(f"Ocurrió un error inesperado: {e}")
 
-# 2. ESPERA Y JUEGO (Si ya está registrado)
+# 2. PANEL DE JUEGO (Si ya está conectado)
 else:
-    id_j = st.session_state.id_jugador
-    st.sidebar.write(f"👤 **Jugador ID:** {id_j}")
+    id_actual = st.session_state.id_jugador
+    st.sidebar.success(f"Conectado como Jugador {id_actual}")
     
-    # Aquí puedes agregar el resto de tu lógica: 
-    # Colocar barcos, Disparar, Obtener Estado del Tablero, etc.
+    col1, col2 = st.columns([1, 2])
     
-    if st.sidebar.button("Cerrar Sesión / Salir"):
-        st.session_state.id_jugador = None
-        st.rerun()
+    with col1:
+        st.write("### Acciones")
+        if st.button("Ver Marcador"):
+            res = st.session_state.stub.ObtenerMarcador(batalla_pb2.Vacio())
+            st.text(res.texto)
+            
+        if st.button("Salir de la partida"):
+            st.session_state.id_jugador = None
+            st.rerun()
 
-    # Ejemplo de cómo pedir el estado del tablero
-    try:
-        tablero = st.session_state.stub.ObtenerEstadoTablero(batalla_pb2.Vacio())
-        st.write("### Estado del Mar")
-        # Lógica para mostrar la matriz del tablero...
-    except Exception as e:
-        st.error("Se perdió la conexión con el servidor.")
-
+    with col2:
+        st.write("### Tablero de Batalla")
+        try:
+            tablero = st.session_state.stub.ObtenerEstadoTablero(batalla_pb2.Vacio())
+            # Aquí va tu lógica para dibujar la matriz...
+            st.write("Conectado al servidor de Render correctamente.")
+        except:
+            st.error("Error al obtener el tablero.")
