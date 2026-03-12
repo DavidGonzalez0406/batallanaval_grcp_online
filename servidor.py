@@ -5,7 +5,7 @@ import sys
 import batalla_pb2
 import batalla_pb2_grpc
 
-# FORZAR SALIDA DE LOGS: Esto evita que Render se quede "esperando" y de error 502
+# Esto es vital para que Render no piense que el proceso está trabado
 sys.stdout.reconfigure(line_buffering=True)
 
 class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
@@ -33,7 +33,7 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         self.vidas[id_jugador] = 10 
         self.puntajes[id_jugador] = 0
         self.jugadores_vivos += 1
-        print(f"JUGADOR_{id_jugador}_REGISTRADO")
+        print(f"--- NUEVO JUGADOR: {id_jugador} ---")
         return batalla_pb2.RespuestaRegistro(id_jugador=id_jugador)
 
     def ObtenerCantidadConectados(self, request, context): 
@@ -106,18 +106,18 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         return batalla_pb2.RespuestaMarcador(texto=texto)
 
 def serve():
-    # Render asigna el puerto dinámicamente
+    # Render asigna el puerto en la variable PORT
     port = os.environ.get('PORT', '10000')
     
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     batalla_pb2_grpc.add_MotorMultijugadorServicer_to_server(MotorMultijugadorServicer(), server)
     
-    # IMPORTANTE: Escuchar en [::] para tráfico externo
+    # El host [::] es obligatorio para que Render acepte conexiones de internet
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     
-    print(f"SERVIDOR_LISTO_EN_PUERTO_{port}")
-    sys.stdout.flush() # Obliga a Render a leer este mensaje
+    print(f"--- SERVIDOR CORRIENDO EN PUERTO: {port} ---")
+    sys.stdout.flush() # Forzar la impresión en el log de Render
     
     server.wait_for_termination()
 
