@@ -102,17 +102,21 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         return batalla_pb2.RespuestaMarcador(texto=texto)
 
 def serve():
-    # Render asigna el puerto en la variable PORT. Si no existe, usa 10000 por defecto.
-    port = os.environ.get('PORT', '10000')
+    # Esto lee el puerto que Render te regala dinámicamente
+    port = os.environ.get('PORT', '10000') 
     
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     batalla_pb2_grpc.add_MotorMultijugadorServicer_to_server(MotorMultijugadorServicer(), server)
     
-    # IMPORTANTE: Usar [::] para que Render pueda encontrar el puerto desde afuera
-    server.add_insecure_port(f'[::]:{port}')
+    # IMPORTANTE: Cambia 'localhost' por '[::]'
+    # El [::] permite que el servidor escuche peticiones externas de internet
+    server.add_insecure_port(f'[::]:{port}') 
     server.start()
-    print(f"🚀 SERVIDOR gRPC ONLINE EN PUERTO: {port}")
+    
+    # Este print es vital para confirmar en los logs que el puerto se leyó bien
+    print(f"🚀 SERVIDOR CORRIENDO EN PUERTO: {port}")
     server.wait_for_termination()
 
 if __name__ == '__main__':
     serve()
+
