@@ -6,7 +6,7 @@ import time
 
 # --- CONFIGURACIÓN DE CONEXIÓN ---
 # Render Free requiere SSL para conexiones externas gRPC
-URL_SERVIDOR = 'batallanaval-grcp-online.onrender.com'
+URL_SERVIDOR = 'batallanaval-grcp-online.onrender.com:443'
 
 def iniciar_conexion():
     if 'stub' not in st.session_state:
@@ -89,3 +89,4 @@ else:
                         cols[i].write("💥") # ¡Impacto!
         except Exception as e:
             st.warning("Esperando datos del tablero...")
+
