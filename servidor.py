@@ -1,8 +1,12 @@
 import grpc
 from concurrent import futures
-import os  # CRUCIAL: Para leer el puerto que asigna Render
+import os
+import sys
 import batalla_pb2
 import batalla_pb2_grpc
+
+# FORZAR SALIDA DE LOGS: Esto evita que Render se quede "esperando" y de error 502
+sys.stdout.reconfigure(line_buffering=True)
 
 class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
     def __init__(self):
@@ -29,7 +33,7 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         self.vidas[id_jugador] = 10 
         self.puntajes[id_jugador] = 0
         self.jugadores_vivos += 1
-        print(f"✅ Jugador {id_jugador} registrado.")
+        print(f"JUGADOR_{id_jugador}_REGISTRADO")
         return batalla_pb2.RespuestaRegistro(id_jugador=id_jugador)
 
     def ObtenerCantidadConectados(self, request, context): 
@@ -102,27 +106,20 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         return batalla_pb2.RespuestaMarcador(texto=texto)
 
 def serve():
-    # 1. Asegúrate de tener 'import os' al inicio del archivo
-    import os 
+    # Render asigna el puerto dinámicamente
     port = os.environ.get('PORT', '10000')
     
-    # 2. Iniciamos el servidor gRPC
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     batalla_pb2_grpc.add_MotorMultijugadorServicer_to_server(MotorMultijugadorServicer(), server)
     
-    # 3. Escuchamos en todas las interfaces ([::]) y el puerto de Render
+    # IMPORTANTE: Escuchar en [::] para tráfico externo
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     
-    # 4. Mensaje de éxito (Sin emojis para evitar fallos de log)
     print(f"SERVIDOR_LISTO_EN_PUERTO_{port}")
+    sys.stdout.flush() # Obliga a Render a leer este mensaje
     
     server.wait_for_termination()
 
 if __name__ == '__main__':
-    try:
-        serve()
-    except Exception as e:
-        print(f"ERROR_CRITICO_AL_INICIAR: {e}")
-
-
+    serve()
