@@ -5,7 +5,7 @@ import sys
 import batalla_pb2
 import batalla_pb2_grpc
 
-# 1. FORZAR LOGS: Para que Render vea que el proceso está vivo
+# Forzar que los logs aparezcan instantáneamente en Render
 sys.stdout.reconfigure(line_buffering=True)
 
 class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
@@ -33,7 +33,7 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         self.vidas[id_jugador] = 10 
         self.puntajes[id_jugador] = 0
         self.jugadores_vivos += 1
-        print(f"JUGADOR_{id_jugador}_CONECTADO")
+        print(f"--- EVENTO: Jugador {id_jugador} se ha unido ---")
         return batalla_pb2.RespuestaRegistro(id_jugador=id_jugador)
 
     def ObtenerCantidadConectados(self, request, context): 
@@ -106,18 +106,30 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         return batalla_pb2.RespuestaMarcador(texto=texto)
 
 def serve():
-    # 2. LEER PUERTO: Render lo asigna solo
     port = os.environ.get('PORT', '10000')
     
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    # OPCIONES DE KEEPALIVE: Vital para evitar el Error 502 en Render
+    options = [
+        ('grpc.keepalive_time_ms', 10000),
+        ('grpc.keepalive_timeout_ms', 5000),
+        ('grpc.keepalive_permit_without_calls', True),
+        ('grpc.http2.max_pings_without_data', 0),
+        ('grpc.http2.min_recv_ping_interval_without_data_ms', 5000),
+    ]
+    
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=10),
+        options=options
+    )
+    
     batalla_pb2_grpc.add_MotorMultijugadorServicer_to_server(MotorMultijugadorServicer(), server)
     
-    # 3. ESCUCHAR EN [::]: Necesario para tráfico de internet
+    # Escuchar en todas las interfaces para tráfico de internet
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     
-    print(f"EXITO: Servidor escuchando en puerto {port}")
-    sys.stdout.flush() 
+    print(f"--- SERVIDOR INICIADO CORRECTAMENTE EN PUERTO {port} ---")
+    sys.stdout.flush()
     
     server.wait_for_termination()
 
