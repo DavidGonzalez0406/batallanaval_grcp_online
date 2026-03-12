@@ -5,7 +5,7 @@ import sys
 import batalla_pb2
 import batalla_pb2_grpc
 
-# CONFIGURACIÓN DE SALIDA: Esto es vital para que Render vea que el proceso inició
+# 1. FORZAR LOGS: Para que Render vea que el proceso está vivo
 sys.stdout.reconfigure(line_buffering=True)
 
 class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
@@ -33,8 +33,7 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         self.vidas[id_jugador] = 10 
         self.puntajes[id_jugador] = 0
         self.jugadores_vivos += 1
-        print(f"--- LOG: Jugador {id_jugador} registrado ---")
-        sys.stdout.flush()
+        print(f"JUGADOR_{id_jugador}_CONECTADO")
         return batalla_pb2.RespuestaRegistro(id_jugador=id_jugador)
 
     def ObtenerCantidadConectados(self, request, context): 
@@ -107,17 +106,17 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         return batalla_pb2.RespuestaMarcador(texto=texto)
 
 def serve():
-    # Render usa el puerto que define en la variable de entorno PORT
+    # 2. LEER PUERTO: Render lo asigna solo
     port = os.environ.get('PORT', '10000')
     
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     batalla_pb2_grpc.add_MotorMultijugadorServicer_to_server(MotorMultijugadorServicer(), server)
     
-    # IMPORTANTE: Usar [::] para que sea accesible desde internet
+    # 3. ESCUCHAR EN [::]: Necesario para tráfico de internet
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     
-    print(f"--- SERVIDOR_ONLINE_PUERTO_{port} ---")
+    print(f"EXITO: Servidor escuchando en puerto {port}")
     sys.stdout.flush() 
     
     server.wait_for_termination()
