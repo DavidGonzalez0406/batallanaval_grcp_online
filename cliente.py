@@ -31,8 +31,17 @@ if st.session_state.id_jugador is None:
     if st.button("Registrarme y Unirme"):
         try:
             respuesta = st.session_state.stub.RegistrarJugador(
-                batalla_pb2.SolicitudRegistro(total_esperados=total_j)
-            )
+# Cambia la línea 34 por esta:
+try:
+    # Asegúrate de que el nombre del mensaje sea el correcto según tu .proto
+    solicitud = batalla_pb2.SolicitudRegistro(total_esperados=total_j)
+    respuesta = st.session_state.stub.RegistrarJugador(solicitud)
+    
+    st.session_state.id_jugador = respuesta.id_jugador
+    st.success(f"¡Registrado! ID: {st.session_state.id_jugador}")
+    st.rerun()
+except AttributeError:
+    st.error("Error: El mensaje 'SolicitudRegistro' no existe en batalla_pb2. Revisa los nombres en tu archivo .proto")            )
             st.session_state.id_jugador = respuesta.id_jugador
             st.success(f"¡Registrado con éxito! Eres el Jugador ID: {st.session_state.id_jugador}")
             st.rerun()
@@ -59,3 +68,4 @@ else:
         # Lógica para mostrar la matriz del tablero...
     except Exception as e:
         st.error("Se perdió la conexión con el servidor.")
+
