@@ -102,21 +102,27 @@ class MotorMultijugadorServicer(batalla_pb2_grpc.MotorMultijugadorServicer):
         return batalla_pb2.RespuestaMarcador(texto=texto)
 
 def serve():
-    # Asegúrate de que 'import os' esté al principio del archivo
+    # 1. Asegúrate de tener 'import os' al inicio del archivo
+    import os 
     port = os.environ.get('PORT', '10000')
     
+    # 2. Iniciamos el servidor gRPC
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     batalla_pb2_grpc.add_MotorMultijugadorServicer_to_server(MotorMultijugadorServicer(), server)
     
-    # IMPORTANTE: Mantén el [::] para que sea visible externamente
+    # 3. Escuchamos en todas las interfaces ([::]) y el puerto de Render
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     
-    # CAMBIO: Quitamos el emoji para evitar errores de codificación en el log de Render
-    print(f"--- SERVIDOR INICIADO EN PUERTO: {port} ---")
+    # 4. Mensaje de éxito (Sin emojis para evitar fallos de log)
+    print(f"SERVIDOR_LISTO_EN_PUERTO_{port}")
+    
     server.wait_for_termination()
 
 if __name__ == '__main__':
-    serve()
+    try:
+        serve()
+    except Exception as e:
+        print(f"ERROR_CRITICO_AL_INICIAR: {e}")
 
 
